@@ -9,7 +9,7 @@ To update this repository, we run the following:
 ```sh
 git remote add upstream https://github.com/harfbuzz/harfbuzz || true
 git fetch upstream
-git merge upstream/master --strategy ours
+git merge upstream/main --strategy ours
 ```
 
 ## Verifying repository contents
@@ -24,7 +24,7 @@ git fetch upstream
 And then comparing using `git diff` with some options to _exclude deleted files_, and exclude `README.md`, `build.zig`, and `.gitignore` from the diff:
 
 ```sh
-git diff $(git merge-base origin/master upstream/master)..origin/master \
+git diff $(git merge-base origin/main upstream/main)..origin/main \
     --diff-filter=d \
     ':(exclude)README.md' \
     ':(exclude)build.zig' \
