@@ -19,6 +19,8 @@ pub fn build(b: *std.Build) void {
 
     if (freetype) {
         lib.linkLibrary(b.dependency("freetype", .{
+            .target = target,
+            .optimize = optimize,
             .brotli = freetype_brotli,
         }).artifact("freetype"));
     }
