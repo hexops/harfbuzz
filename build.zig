@@ -34,7 +34,7 @@ pub fn build(b: *std.Build) void {
         );
     }
 
-    _ = b.addInstallArtifact(lib);
+    b.installArtifact(lib);
 }
 
 const headers = [_][]const u8{
