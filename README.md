@@ -4,30 +4,14 @@ This is a fork of [harfbuzz](https://github.com/harfbuzz/harfbuzz), packaged for
 
 ## Updating
 
-To update this repository, we run the following:
-
-```sh
-git remote add upstream https://github.com/harfbuzz/harfbuzz || true
-git fetch upstream
-git merge upstream/main --strategy ours
-```
+To update this repository, run `./update.sh` followed by `./verify.sh` to verify the repository contents.
 
 ## Verifying repository contents
 
-For supply chain security reasons (e.g. to confirm we made no patches to the code) you can verify the contents of this repository by adding the upstream version as a remote:
+For supply chain security reasons (e.g. to confirm we made no patches to the code) we provide a `git diff` command you can run to verify the contents of this repository:
 
 ```sh
-git remote add upstream https://github.com/harfbuzz/harfbuzz || true
-git fetch upstream
+./verify.sh
 ```
 
-And then comparing using `git diff` with some options to _exclude deleted files_, and exclude `README.md`, `build.zig`, and `.gitignore` from the diff:
-
-```sh
-git diff $(git merge-base origin/main upstream/main)..origin/main \
-    --diff-filter=d \
-    ':(exclude)README.md' \
-    ':(exclude)build.zig' \
-    ':(exclude)build.zig.zon' \
-    ':(exclude).gitignore'
-```
+If nothing is printed, there is no diff. Deleted files, and changes to `README.md`, `build.zig`, `.github` CI files and `.gitignore` are ignored.
