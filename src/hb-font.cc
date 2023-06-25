@@ -59,6 +59,11 @@
  *
  * HarfBuzz provides a built-in set of lightweight default
  * functions for each method in #hb_font_funcs_t.
+ *
+ * The default font functions are implemented in terms of the
+ * #hb_font_funcs_t methods of the parent font object.  This allows
+ * client programs to override only the methods they need to, and
+ * otherwise inherit the parent font's implementation, if any.
  **/
 
 
@@ -2643,7 +2648,6 @@ hb_font_set_variations (hb_font_t            *font,
       if (axes[axis_index].axisTag == tag)
 	design_coords[axis_index] = v;
   }
-  font->face->table.avar->map_coords (normalized, coords_length);
 
   hb_ot_var_normalize_coords (font->face, coords_length, design_coords, normalized);
   _hb_font_adopt_var_coords (font, normalized, design_coords, coords_length);
@@ -2714,8 +2718,6 @@ hb_font_set_variation (hb_font_t *font,
   for (unsigned axis_index = 0; axis_index < coords_length; axis_index++)
     if (axes[axis_index].axisTag == tag)
       design_coords[axis_index] = value;
-
-  font->face->table.avar->map_coords (normalized, coords_length);
 
   hb_ot_var_normalize_coords (font->face, coords_length, design_coords, normalized);
   _hb_font_adopt_var_coords (font, normalized, design_coords, coords_length);

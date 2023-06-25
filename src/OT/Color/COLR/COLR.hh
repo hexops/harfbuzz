@@ -409,7 +409,6 @@ struct ColorLine
   {
     TRACE_SUBSET (this);
     auto *out = c->serializer->start_embed (this);
-    if (unlikely (!out)) return_trace (false);
     if (unlikely (!c->serializer->extend_min (out))) return_trace (false);
 
     if (!c->serializer->check_assign (out->extend, extend, HB_SERIALIZE_ERROR_INT_OVERFLOW)) return_trace (false);
@@ -1514,10 +1513,10 @@ struct ClipBoxFormat2 : Variable<ClipBoxFormat1>
     value.get_clip_box(clip_box, instancer);
     if (instancer)
     {
-      clip_box.xMin += _hb_roundf (instancer (varIdxBase, 0));
-      clip_box.yMin += _hb_roundf (instancer (varIdxBase, 1));
-      clip_box.xMax += _hb_roundf (instancer (varIdxBase, 2));
-      clip_box.yMax += _hb_roundf (instancer (varIdxBase, 3));
+      clip_box.xMin += roundf (instancer (varIdxBase, 0));
+      clip_box.yMin += roundf (instancer (varIdxBase, 1));
+      clip_box.xMax += roundf (instancer (varIdxBase, 2));
+      clip_box.yMax += roundf (instancer (varIdxBase, 3));
     }
   }
 };
@@ -2167,7 +2166,7 @@ struct COLR
     if (version == 0 && (!base_it || !layer_it))
       return_trace (false);
 
-    COLR *colr_prime = c->serializer->start_embed<COLR> ();
+    auto *colr_prime = c->serializer->start_embed<COLR> ();
     if (unlikely (!c->serializer->extend_min (colr_prime)))  return_trace (false);
 
     if (version == 0)
@@ -2213,6 +2212,7 @@ struct COLR
       return nullptr;
   }
 
+#ifndef HB_NO_PAINT
   bool
   get_extents (hb_font_t *font, hb_codepoint_t glyph, hb_glyph_extents_t *extents) const
   {
@@ -2251,6 +2251,7 @@ struct COLR
 
     return ret;
   }
+#endif
 
   bool
   has_paint_for_glyph (hb_codepoint_t glyph) const
@@ -2274,6 +2275,7 @@ struct COLR
 					instancer);
   }
 
+#ifndef HB_NO_PAINT
   bool
   paint_glyph (hb_font_t *font, hb_codepoint_t glyph, hb_paint_funcs_t *funcs, void *data, unsigned int palette_index, hb_color_t foreground, bool clip = true) const
   {
@@ -2360,6 +2362,7 @@ struct COLR
 
     return false;
   }
+#endif
 
   protected:
   HBUINT16	version;	/* Table version number (starts at 0). */
