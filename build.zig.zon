@@ -3,8 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .freetype = .{
-            .url = "https://github.com/hexops/freetype/archive/2cd030f99331b6ba4bb98ce12a1a57caa43b5239.tar.gz",
-            .hash = "1220f52e6d3a7db16101abd44d0e0a499c68294ac0885f23344d6b5643ad847069a8",
+            .url = "https://github.com/hexops/freetype/archive/26f9ea0ce8ec934d9d53caec80f6b3d0f857892b.tar.gz",
+            .hash = "1220830ad5ed471e2ddeee8c5b713ad2668fad844d2b32d0a5e4543adde0ee9e69a7",
         },
     },
 }
