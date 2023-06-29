@@ -1,11 +1,10 @@
 .{
     .name = "freetype",
     .version = "0.0.0",
-
     .dependencies = .{
         .freetype = .{
-            .url = "https://github.com/hexops/freetype/archive/d3b9bfb88e6832e75b49907efc9fe343b4b620bd.tar.gz",
-            .hash = "1220d6752594b317fc7147aec4935af74b4644c526ff20582ebaf2e2456725f92999",
+            .url = "https://github.com/hexops/freetype/archive/2cd030f99331b6ba4bb98ce12a1a57caa43b5239.tar.gz",
+            .hash = "1220f52e6d3a7db16101abd44d0e0a499c68294ac0885f23344d6b5643ad847069a8",
         },
     },
 }
