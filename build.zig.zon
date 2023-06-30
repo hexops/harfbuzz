@@ -4,7 +4,7 @@
     .dependencies = .{
         .freetype = .{
             .url = "https://github.com/hexops/freetype/archive/26f9ea0ce8ec934d9d53caec80f6b3d0f857892b.tar.gz",
-            .hash = "1220830ad5ed471e2ddeee8c5b713ad2668fad844d2b32d0a5e4543adde0ee9e69a7",
+            .hash = "1220148c11cd1b8e8f9096de847ad332f855bf0b0a2f0efb5d9ca061fdb21fe32dca",
         },
     },
 }
