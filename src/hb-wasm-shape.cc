@@ -24,6 +24,7 @@
  * Google Author(s): Behdad Esfahbod
  */
 
+#undef HB_DEBUG_WASM
 #define HB_DEBUG_WASM 1
 
 #include "hb-shaper-impl.hh"
@@ -136,7 +137,7 @@ _hb_wasm_init ()
     return true;
 
   RuntimeInitArgs init_args;
-  memset (&init_args, 0, sizeof (RuntimeInitArgs));
+  hb_memset (&init_args, 0, sizeof (RuntimeInitArgs));
 
   init_args.mem_alloc_type = Alloc_With_Allocator;
   init_args.mem_alloc_option.allocator.malloc_func = (void *) hb_malloc;

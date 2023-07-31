@@ -50,6 +50,7 @@
 #include "hb-ot-name-table.hh"
 #include "hb-ot-layout-gsub-table.hh"
 #include "hb-ot-layout-gpos-table.hh"
+#include "hb-ot-var-avar-table.hh"
 #include "hb-ot-var-cvar-table.hh"
 #include "hb-ot-var-fvar-table.hh"
 #include "hb-ot-var-gvar-table.hh"
@@ -213,15 +214,36 @@ _get_table_tags (const hb_subset_plan_t* plan,
 static unsigned
 _plan_estimate_subset_table_size (hb_subset_plan_t *plan,
 				  unsigned table_len,
-				  bool same_size)
+				  hb_tag_t table_tag)
 {
   unsigned src_glyphs = plan->source->get_num_glyphs ();
   unsigned dst_glyphs = plan->glyphset ()->get_population ();
 
-  if (unlikely (!src_glyphs) || same_size)
-    return 8192 + table_len;
+  unsigned bulk = 8192;
+  /* Tables that we want to allocate same space as the source table. For GSUB/GPOS it's
+   * because those are expensive to subset, so giving them more room is fine. */
+  bool same_size = table_tag == HB_OT_TAG_GSUB ||
+		   table_tag == HB_OT_TAG_GPOS ||
+		   table_tag == HB_OT_TAG_name;
 
-  return 8192 + (unsigned) (table_len * sqrt ((double) dst_glyphs / src_glyphs));
+  if (plan->flags & HB_SUBSET_FLAGS_RETAIN_GIDS)
+  {
+    if (table_tag == HB_OT_TAG_CFF1)
+    {
+      /* Add some extra room for the CFF charset. */
+      bulk += src_glyphs * 16;
+    }
+    else if (table_tag == HB_OT_TAG_CFF2)
+    {
+      /* Just extra CharString offsets. */
+      bulk += src_glyphs * 4;
+    }
+  }
+
+  if (unlikely (!src_glyphs) || same_size)
+    return bulk + table_len;
+
+  return bulk + (unsigned) (table_len * sqrt ((double) dst_glyphs / src_glyphs));
 }
 
 /*
@@ -252,7 +274,7 @@ _try_subset (const TableType *table,
              hb_vector_t<char>* buf,
              hb_subset_context_t* c /* OUT */)
 {
-  c->serializer->start_serialize<TableType> ();
+  c->serializer->start_serialize ();
   if (c->serializer->in_error ()) return false;
 
   bool needed = table->subset (c);
@@ -306,13 +328,7 @@ _subset (hb_subset_plan_t *plan, hb_vector_t<char> &buf)
     return false;
   }
 
-  /* Tables that we want to allocate same space as the source table. For GSUB/GPOS it's
-   * because those are expensive to subset, so giving them more room is fine. */
-  bool same_size_table = TableType::tableTag == HB_OT_TAG_GSUB ||
-			 TableType::tableTag == HB_OT_TAG_GPOS ||
-			 TableType::tableTag == HB_OT_TAG_name;
-
-  unsigned buf_size = _plan_estimate_subset_table_size (plan, blob->length, same_size_table);
+  unsigned buf_size = _plan_estimate_subset_table_size (plan, blob->length, TableType::tableTag);
   DEBUG_MSG (SUBSET, nullptr,
              "OT::%c%c%c%c initial estimated table size: %u bytes.", HB_UNTAG (tag), buf_size);
   if (unlikely (!buf.alloc (buf_size)))
@@ -501,10 +517,11 @@ _subset_table (hb_subset_plan_t *plan,
   case HB_OT_TAG_fvar:
     if (plan->user_axes_location.is_empty ()) return _passthrough (plan, tag);
     return _subset<const OT::fvar> (plan, buf);
+  case HB_OT_TAG_avar:
+    if (plan->user_axes_location.is_empty ()) return _passthrough (plan, tag);
+    return _subset<const OT::avar> (plan, buf);
   case HB_OT_TAG_STAT:
-    /*TODO(qxliu): change the condition as we support more complex
-     * instancing operation*/
-    if (plan->all_axes_pinned) return _subset<const OT::STAT> (plan, buf);
+    if (!plan->user_axes_location.is_empty ()) return _subset<const OT::STAT> (plan, buf);
     else return _passthrough (plan, tag);
 
   case HB_TAG ('c', 'v', 't', ' '):

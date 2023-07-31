@@ -205,7 +205,7 @@ struct hb_vector_t
   Type *push ()
   {
     if (unlikely (!resize (length + 1)))
-      return &Crap (Type);
+      return std::addressof (Crap (Type));
     return std::addressof (arrayZ[length - 1]);
   }
   template <typename T,
@@ -215,7 +215,7 @@ struct hb_vector_t
   Type *push (T&& v)
   {
     Type *p = push ();
-    if (p == &Crap (Type))
+    if (p == std::addressof (Crap (Type)))
       // If push failed to allocate then don't copy v, since this may cause
       // the created copy to leak memory since we won't have stored a
       // reference to it.
@@ -228,15 +228,14 @@ struct hb_vector_t
 	    hb_enable_if (std::is_copy_constructible<T2>::value)>
   Type *push (T&& v)
   {
-    if (unlikely (!alloc (length + 1)))
+    if (unlikely ((int) length >= allocated && !alloc (length + 1)))
       // If push failed to allocate then don't copy v, since this may cause
       // the created copy to leak memory since we won't have stored a
       // reference to it.
-      return &Crap (Type);
+      return std::addressof (Crap (Type));
 
     /* Emplace. */
-    length++;
-    Type *p = std::addressof (arrayZ[length - 1]);
+    Type *p = std::addressof (arrayZ[length++]);
     return new (p) Type (std::forward<T> (v));
   }
 
@@ -287,9 +286,10 @@ struct hb_vector_t
     }
     return new_array;
   }
-  /* Specialization for hb_vector_t<hb_vector_t<U>> to speed up. */
+  /* Specialization for hb_vector_t<hb_{vector,array}_t<U>> to speed up. */
   template <typename T = Type,
-	    hb_enable_if (hb_is_same(T, hb_vector_t<typename T::item_t>))>
+	    hb_enable_if (hb_is_same (T, hb_vector_t<typename T::item_t>) ||
+			  hb_is_same (T, hb_array_t <typename T::item_t>))>
   Type *
   realloc_vector (unsigned new_allocated, hb_priority<1>)
   {
@@ -306,7 +306,7 @@ struct hb_vector_t
   void
   grow_vector (unsigned size, hb_priority<0>)
   {
-    memset (arrayZ + length, 0, (size - length) * sizeof (*arrayZ));
+    hb_memset (arrayZ + length, 0, (size - length) * sizeof (*arrayZ));
     length = size;
   }
   template <typename T = Type,
@@ -317,13 +317,14 @@ struct hb_vector_t
     for (; length < size; length++)
       new (std::addressof (arrayZ[length])) Type ();
   }
-  /* Specialization for hb_vector_t<hb_vector_t<U>> to speed up. */
+  /* Specialization for hb_vector_t<hb_{vector,array}_t<U>> to speed up. */
   template <typename T = Type,
-	    hb_enable_if (hb_is_same(T, hb_vector_t<typename T::item_t>))>
+	    hb_enable_if (hb_is_same (T, hb_vector_t<typename T::item_t>) ||
+			  hb_is_same (T, hb_array_t <typename T::item_t>))>
   void
   grow_vector (unsigned size, hb_priority<1>)
   {
-    memset (arrayZ + length, 0, (size - length) * sizeof (*arrayZ));
+    hb_memset (arrayZ + length, 0, (size - length) * sizeof (*arrayZ));
     length = size;
   }
 
@@ -373,14 +374,15 @@ struct hb_vector_t
   void
   shrink_vector (unsigned size)
   {
-    if (std::is_trivially_destructible<Type>::value)
-      length = size;
-    else
-      while ((unsigned) length > size)
-      {
-	arrayZ[(unsigned) length - 1].~Type ();
-	length--;
-      }
+    assert (size <= length);
+    if (!std::is_trivially_destructible<Type>::value)
+    {
+      unsigned count = length - size;
+      Type *p = arrayZ + length - 1;
+      while (count--)
+        p--->~Type ();
+    }
+    length = size;
   }
 
   void
