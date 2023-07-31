@@ -517,7 +517,7 @@ struct cff_subset_accelerator_t
     auto *mapping = glyph_to_sid_map.get_relaxed ();
     if (mapping)
     {
-      mapping->~hb_vector_t ();
+      mapping->~glyph_to_sid_map_t ();
       hb_free (mapping);
     }
   }
@@ -525,7 +525,7 @@ struct cff_subset_accelerator_t
   parsed_cs_str_vec_t parsed_charstrings;
   parsed_cs_str_vec_t parsed_global_subrs;
   hb_vector_t<parsed_cs_str_vec_t> parsed_local_subrs;
-  mutable hb_atomic_ptr_t<hb_vector_t<uint16_t>> glyph_to_sid_map;
+  mutable hb_atomic_ptr_t<glyph_to_sid_map_t> glyph_to_sid_map;
 
  private:
   hb_blob_t* original_blob;
@@ -607,7 +607,7 @@ struct subr_remap_t : hb_inc_bimap_t
      * no optimization based on usage counts. fonttools doesn't appear doing that either.
      */
 
-    resize (closure->get_population ());
+    alloc (closure->get_population ());
     for (auto old_num : *closure)
       add (old_num);
 
@@ -773,7 +773,7 @@ struct subr_subsetter_t
 	}
       }
 
-      /* Doing this here one by one instead of compacting all at the en
+      /* Doing this here one by one instead of compacting all at the end
        * has massive peak-memory saving.
        *
        * The compacting both saves memory and makes further operations

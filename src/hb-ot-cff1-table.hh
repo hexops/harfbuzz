@@ -173,11 +173,7 @@ struct Encoding
   bool serialize (hb_serialize_context_t *c, const Encoding &src)
   {
     TRACE_SERIALIZE (this);
-    unsigned int size = src.get_size ();
-    Encoding *dest = c->allocate_size<Encoding> (size);
-    if (unlikely (!dest)) return_trace (false);
-    hb_memcpy (dest, &src, size);
-    return_trace (true);
+    return_trace (c->embed (src));
   }
 
   /* serialize a subset Encoding */
@@ -330,11 +326,11 @@ struct Charset0
       return sids[glyph - 1];
   }
 
-  void collect_glyph_to_sid_map (hb_vector_t<uint16_t> *mapping, unsigned int num_glyphs) const
+  void collect_glyph_to_sid_map (glyph_to_sid_map_t *mapping, unsigned int num_glyphs) const
   {
     mapping->resize (num_glyphs, false);
     for (hb_codepoint_t gid = 1; gid < num_glyphs; gid++)
-      mapping->arrayZ[gid] = sids[gid - 1];
+      mapping->arrayZ[gid] = {sids[gid - 1], gid};
   }
 
   hb_codepoint_t get_glyph (hb_codepoint_t sid, unsigned int num_glyphs) const
@@ -430,7 +426,7 @@ struct Charset1_2 {
     return 0;
   }
 
-  void collect_glyph_to_sid_map (hb_vector_t<uint16_t> *mapping, unsigned int num_glyphs) const
+  void collect_glyph_to_sid_map (glyph_to_sid_map_t *mapping, unsigned int num_glyphs) const
   {
     mapping->resize (num_glyphs, false);
     hb_codepoint_t gid = 1;
@@ -440,8 +436,9 @@ struct Charset1_2 {
     {
       hb_codepoint_t sid = ranges[i].first;
       unsigned count = ranges[i].nLeft + 1;
+      unsigned last = gid + count;
       for (unsigned j = 0; j < count; j++)
-	mapping->arrayZ[gid++] = sid++;
+	mapping->arrayZ[gid++] = {sid++, last - 1};
 
       if (gid >= num_glyphs)
         break;
@@ -501,11 +498,7 @@ struct Charset
   bool serialize (hb_serialize_context_t *c, const Charset &src, unsigned int num_glyphs)
   {
     TRACE_SERIALIZE (this);
-    unsigned int size = src.get_size (num_glyphs);
-    Charset *dest = c->allocate_size<Charset> (size);
-    if (unlikely (!dest)) return_trace (false);
-    hb_memcpy (dest, &src, size);
-    return_trace (true);
+    return_trace (c->embed ((const char *) &src, src.get_size (num_glyphs)));
   }
 
   /* serialize a subset Charset */
@@ -522,7 +515,7 @@ struct Charset
     {
     case 0:
     {
-      Charset0 *fmt0 = c->allocate_size<Charset0> (Charset0::get_size (num_glyphs));
+      Charset0 *fmt0 = c->allocate_size<Charset0> (Charset0::get_size (num_glyphs), false);
       if (unlikely (!fmt0)) return_trace (false);
       unsigned int glyph = 0;
       for (unsigned int i = 0; i < sid_ranges.length; i++)
@@ -536,29 +529,35 @@ struct Charset
 
     case 1:
     {
-      Charset1 *fmt1 = c->allocate_size<Charset1> (Charset1::min_size + Charset1_Range::static_size * sid_ranges.length);
+      Charset1 *fmt1 = c->allocate_size<Charset1> (Charset1::get_size_for_ranges (sid_ranges.length), false);
       if (unlikely (!fmt1)) return_trace (false);
+      hb_codepoint_t all_glyphs = 0;
       for (unsigned int i = 0; i < sid_ranges.length; i++)
       {
-	if (unlikely (!(sid_ranges.arrayZ[i].glyph <= 0xFF)))
-	  return_trace (false);
-	fmt1->ranges[i].first = sid_ranges.arrayZ[i].code;
-	fmt1->ranges[i].nLeft = sid_ranges.arrayZ[i].glyph;
+        auto &_ = sid_ranges.arrayZ[i];
+        all_glyphs |= _.glyph;
+	fmt1->ranges[i].first = _.code;
+	fmt1->ranges[i].nLeft = _.glyph;
       }
+      if (unlikely (!(all_glyphs <= 0xFF)))
+	return_trace (false);
     }
     break;
 
     case 2:
     {
-      Charset2 *fmt2 = c->allocate_size<Charset2> (Charset2::min_size + Charset2_Range::static_size * sid_ranges.length);
+      Charset2 *fmt2 = c->allocate_size<Charset2> (Charset2::get_size_for_ranges (sid_ranges.length), false);
       if (unlikely (!fmt2)) return_trace (false);
+      hb_codepoint_t all_glyphs = 0;
       for (unsigned int i = 0; i < sid_ranges.length; i++)
       {
-	if (unlikely (!(sid_ranges.arrayZ[i].glyph <= 0xFFFF)))
-	  return_trace (false);
-	fmt2->ranges[i].first = sid_ranges.arrayZ[i].code;
-	fmt2->ranges[i].nLeft = sid_ranges.arrayZ[i].glyph;
+        auto &_ = sid_ranges.arrayZ[i];
+        all_glyphs |= _.glyph;
+	fmt2->ranges[i].first = _.code;
+	fmt2->ranges[i].nLeft = _.glyph;
       }
+      if (unlikely (!(all_glyphs <= 0xFFFF)))
+	return_trace (false);
     }
     break;
 
@@ -589,7 +588,7 @@ struct Charset
     }
   }
 
-  void collect_glyph_to_sid_map (hb_vector_t<uint16_t> *mapping, unsigned int num_glyphs) const
+  void collect_glyph_to_sid_map (glyph_to_sid_map_t *mapping, unsigned int num_glyphs) const
   {
     switch (format)
     {
@@ -639,10 +638,10 @@ struct Charset
 struct CFF1StringIndex : CFF1Index
 {
   bool serialize (hb_serialize_context_t *c, const CFF1StringIndex &strings,
-		  const hb_map_t &sidmap)
+		  const hb_vector_t<unsigned> &sidmap)
   {
     TRACE_SERIALIZE (this);
-    if (unlikely ((strings.count == 0) || (sidmap.get_population () == 0)))
+    if (unlikely ((strings.count == 0) || (sidmap.length == 0)))
     {
       if (unlikely (!c->extend_min (this->count)))
 	return_trace (false);
@@ -652,11 +651,11 @@ struct CFF1StringIndex : CFF1Index
 
     if (unlikely (sidmap.in_error ())) return_trace (false);
 
-    hb_vector_t<hb_ubytes_t> bytesArray;
-    if (!bytesArray.resize (sidmap.get_population (), false))
-      return_trace (false);
-    for (auto _ : sidmap)
-      bytesArray.arrayZ[_.second] = strings[_.first];
+    // Save this in a vector since serialize() iterates it twice.
+    hb_vector_t<hb_ubytes_t> bytesArray (+ hb_iter (sidmap)
+					 | hb_map (strings));
+
+    if (unlikely (bytesArray.in_error ())) return_trace (false);
 
     bool result = CFF1Index::serialize (c, bytesArray);
     return_trace (result);
@@ -1062,6 +1061,8 @@ struct cff1
   template <typename PRIVOPSET, typename PRIVDICTVAL>
   struct accelerator_templ_t
   {
+    static constexpr hb_tag_t tableTag = cff1::tableTag;
+
     accelerator_templ_t (hb_face_t *face)
     {
       if (!face) return;
@@ -1268,14 +1269,14 @@ struct cff1
       }
     }
 
-    hb_vector_t<uint16_t> *create_glyph_to_sid_map () const
+    glyph_to_sid_map_t *create_glyph_to_sid_map () const
     {
       if (charset != &Null (Charset))
       {
-	auto *mapping = (hb_vector_t<uint16_t> *) hb_malloc (sizeof (hb_vector_t<uint16_t>));
+	auto *mapping = (glyph_to_sid_map_t *) hb_malloc (sizeof (glyph_to_sid_map_t));
 	if (unlikely (!mapping)) return nullptr;
-	mapping = new (mapping) hb_vector_t<uint16_t> ();
-	mapping->push (0);
+	mapping = new (mapping) glyph_to_sid_map_t ();
+	mapping->push (code_pair_t {0, 1});
 	charset->collect_glyph_to_sid_map (mapping, num_glyphs);
 	return mapping;
       }

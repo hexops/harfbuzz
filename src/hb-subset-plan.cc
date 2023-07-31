@@ -349,7 +349,7 @@ _generate_varstore_inner_maps (const hb_set_t& varidx_set,
 {
   if (varidx_set.is_empty () || subtable_count == 0) return;
 
-  inner_maps.resize (subtable_count);
+  if (unlikely (!inner_maps.resize (subtable_count))) return;
   for (unsigned idx : varidx_set)
   {
     uint16_t major = idx >> 16;
@@ -561,7 +561,7 @@ _populate_unicodes_to_retain (const hb_set_t *unicodes,
 	unicodes->get_population () < cmap_unicodes->get_population () &&
 	glyphs->get_population () < cmap_unicodes->get_population ())
     {
-      plan->codepoint_to_glyph->resize (unicodes->get_population () + glyphs->get_population ());
+      plan->codepoint_to_glyph->alloc (unicodes->get_population () + glyphs->get_population ());
 
       auto &gid_to_unicodes = plan->accelerator->gid_to_unicodes;
       for (hb_codepoint_t gid : *glyphs)
@@ -591,7 +591,7 @@ _populate_unicodes_to_retain (const hb_set_t *unicodes,
     }
     else
     {
-      plan->codepoint_to_glyph->resize (cmap_unicodes->get_population ());
+      plan->codepoint_to_glyph->alloc (cmap_unicodes->get_population ());
       for (hb_codepoint_t cp : *cmap_unicodes)
       {
 	hb_codepoint_t gid = (*unicode_glyphid_map)[cp];
@@ -605,11 +605,14 @@ _populate_unicodes_to_retain (const hb_set_t *unicodes,
 
     /* Add gids which where requested, but not mapped in cmap */
     unsigned num_glyphs = plan->source->get_num_glyphs ();
-    for (hb_codepoint_t gid : *glyphs)
+    hb_codepoint_t first = HB_SET_VALUE_INVALID, last = HB_SET_VALUE_INVALID;
+    for (; glyphs->next_range (&first, &last); )
     {
-      if (gid >= num_glyphs)
+      if (first >= num_glyphs)
 	break;
-      plan->_glyphset_gsub.add (gid);
+      if (last >= num_glyphs)
+        last = num_glyphs - 1;
+      plan->_glyphset_gsub.add_range (first, last);
     }
   }
 
@@ -790,7 +793,7 @@ _create_glyph_map_gsub (const hb_set_t* glyph_set_gsub,
                         const hb_map_t* glyph_map,
                         hb_map_t* out)
 {
-  out->resize (glyph_set_gsub->get_population ());
+  out->alloc (glyph_set_gsub->get_population ());
   + hb_iter (glyph_set_gsub)
   | hb_map ([&] (hb_codepoint_t gid) {
     return hb_codepoint_pair_t (gid, glyph_map->get (gid));
@@ -810,8 +813,8 @@ _create_old_gid_to_new_gid_map (const hb_face_t *face,
 				unsigned int	*num_glyphs /* OUT */)
 {
   unsigned pop = all_gids_to_retain->get_population ();
-  reverse_glyph_map->resize (pop);
-  glyph_map->resize (pop);
+  reverse_glyph_map->alloc (pop);
+  glyph_map->alloc (pop);
   new_to_old_gid_list->alloc (pop);
 
   if (*requested_glyph_map)
@@ -927,12 +930,14 @@ _normalize_axes_location (hb_face_t *face, hb_subset_plan_t *plan)
       new_axis_idx++;
     }
 
-    if (plan->user_axes_location.has (axis_tag))
+    Triple *axis_range;
+    if (plan->user_axes_location.has (axis_tag, &axis_range))
     {
-      Triple axis_range = plan->user_axes_location.get (axis_tag);
-      int normalized_min = axis.normalize_axis_value (axis_range.minimum);
-      int normalized_default = axis.normalize_axis_value (axis_range.middle);
-      int normalized_max = axis.normalize_axis_value (axis_range.maximum);
+      plan->axes_triple_distances.set (axis_tag, axis.get_triple_distances ());
+
+      int normalized_min = axis.normalize_axis_value (axis_range->minimum);
+      int normalized_default = axis.normalize_axis_value (axis_range->middle);
+      int normalized_max = axis.normalize_axis_value (axis_range->maximum);
 
       if (has_avar && old_axis_idx < avar_axis_count)
       {
@@ -940,9 +945,9 @@ _normalize_axes_location (hb_face_t *face, hb_subset_plan_t *plan)
         normalized_default = seg_maps->map (normalized_default);
         normalized_max = seg_maps->map (normalized_max);
       }
-      plan->axes_location.set (axis_tag, Triple (static_cast<float> (normalized_min),
-                                                 static_cast<float> (normalized_default),
-                                                 static_cast<float> (normalized_max)));
+      plan->axes_location.set (axis_tag, Triple (static_cast<float> (normalized_min / 16384.f),
+                                                 static_cast<float> (normalized_default / 16384.f),
+                                                 static_cast<float> (normalized_max / 16384.f)));
 
       if (normalized_default != 0)
         plan->pinned_at_default = false;

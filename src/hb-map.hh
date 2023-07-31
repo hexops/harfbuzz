@@ -45,9 +45,9 @@ struct hb_hashmap_t
   hb_hashmap_t ()  { init (); }
   ~hb_hashmap_t () { fini (); }
 
-  hb_hashmap_t (const hb_hashmap_t& o) : hb_hashmap_t () { resize (o.population); hb_copy (o, *this); }
+  hb_hashmap_t (const hb_hashmap_t& o) : hb_hashmap_t () { alloc (o.population); hb_copy (o, *this); }
   hb_hashmap_t (hb_hashmap_t&& o) : hb_hashmap_t () { hb_swap (*this, o); }
-  hb_hashmap_t& operator= (const hb_hashmap_t& o)  { reset (); resize (o.population); hb_copy (o, *this); return *this; }
+  hb_hashmap_t& operator= (const hb_hashmap_t& o)  { reset (); alloc (o.population); hb_copy (o, *this); return *this; }
   hb_hashmap_t& operator= (hb_hashmap_t&& o)  { hb_swap (*this, o); return *this; }
 
   hb_hashmap_t (std::initializer_list<hb_pair_t<K, V>> lst) : hb_hashmap_t ()
@@ -61,22 +61,26 @@ struct hb_hashmap_t
   {
     auto iter = hb_iter (o);
     if (iter.is_random_access_iterator || iter.has_fast_len)
-      resize (hb_len (iter));
+      alloc (hb_len (iter));
     hb_copy (iter, *this);
   }
 
   struct item_t
   {
     K key;
-    uint32_t is_used_ : 1;
     uint32_t is_real_ : 1;
+    uint32_t is_used_ : 1;
     uint32_t hash : 30;
     V value;
 
     item_t () : key (),
-		is_used_ (false), is_real_ (false),
+		is_real_ (false), is_used_ (false),
 		hash (0),
 		value () {}
+
+    // Needed for https://github.com/harfbuzz/harfbuzz/issues/4138
+    K& get_key () { return key; }
+    V& get_value () { return value; }
 
     bool is_used () const { return is_used_; }
     void set_used (bool is_used) { is_used_ = is_used; }
@@ -166,7 +170,7 @@ struct hb_hashmap_t
 
   bool in_error () const { return !successful; }
 
-  bool resize (unsigned new_population = 0)
+  bool alloc (unsigned new_population = 0)
   {
     if (unlikely (!successful)) return false;
 
@@ -184,7 +188,7 @@ struct hb_hashmap_t
       for (auto &_ : hb_iter (new_items, new_size))
 	new (&_) item_t ();
     else
-      memset (new_items, 0, (size_t) new_size * sizeof (item_t));
+      hb_memset (new_items, 0, (size_t) new_size * sizeof (item_t));
 
     unsigned int old_size = size ();
     item_t *old_items = items;
@@ -218,7 +222,7 @@ struct hb_hashmap_t
   bool set_with_hash (KK&& key, uint32_t hash, VV&& value, bool overwrite = true)
   {
     if (unlikely (!successful)) return false;
-    if (unlikely ((occupancy + occupancy / 2) >= mask && !resize ())) return false;
+    if (unlikely ((occupancy + occupancy / 2) >= mask && !alloc ())) return false;
 
     hash &= 0x3FFFFFFF; // We only store lower 30bit of hash
     unsigned int tombstone = (unsigned int) -1;
@@ -259,7 +263,7 @@ struct hb_hashmap_t
     population++;
 
     if (unlikely (length > max_chain_length) && occupancy * 8 > mask)
-      resize (mask - 8); // This ensures we jump to next larger size
+      alloc (mask - 8); // This ensures we jump to next larger size
 
     return true;
   }
@@ -405,23 +409,21 @@ struct hb_hashmap_t
   auto keys_ref () const HB_AUTO_RETURN
   (
     + iter_items ()
-    | hb_map (&item_t::key)
+    | hb_map (&item_t::get_key)
   )
   auto keys () const HB_AUTO_RETURN
   (
-    + iter_items ()
-    | hb_map (&item_t::key)
+    + keys_ref ()
     | hb_map (hb_ridentity)
   )
   auto values_ref () const HB_AUTO_RETURN
   (
     + iter_items ()
-    | hb_map (&item_t::value)
+    | hb_map (&item_t::get_value)
   )
   auto values () const HB_AUTO_RETURN
   (
-    + iter_items ()
-    | hb_map (&item_t::value)
+    + values_ref ()
     | hb_map (hb_ridentity)
   )
 
