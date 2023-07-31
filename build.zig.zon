@@ -3,7 +3,7 @@
     .version = "0.0.0",
     .dependencies = .{
         .freetype = .{
-            .url = "https://github.com/hexops/freetype/archive/acf084ede2df967833676ba14a4a615f7941c318.tar.gz",
+            .url = "https://pkg.machengine.org/freetype/acf084ede2df967833676ba14a4a615f7941c318.tar.gz",
             .hash = "1220268714fdfc582216ab175e562ff96e168b7af9f1320afa715aee63231ccafb15",
         },
     },
