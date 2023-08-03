@@ -3,8 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .freetype = .{
-            .url = "https://pkg.machengine.org/freetype/f966f8117fdef886a04b84ced45801bf8add5c69.tar.gz",
-            .hash = "1220d8459bdcc6914e698acb582f6aca34b70a5b30bdd665cdcd969087c98e08a99a",
+            .url = "https://pkg.machengine.org/freetype/4ecf0cec0e0b5679cb18ef6495fbb60aacdca78f.tar.gz",
+            .hash = "1220bd3c9aa14f03adb352617c99a152d043d62e46e8376a52800a62fb4f899d8a74",
         },
     },
 }
