@@ -3,9 +3,9 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const enable_freetype = b.option(bool, "enable_freetype", "Build Freetype") orelse false;
+    const enable_freetype = b.option(bool, "enable_freetype", "Build Freetype") orelse true;
     const use_system_zlib = b.option(bool, "freetype_use_system_zlib", "Use system zlib") orelse false;
-    const enable_brotli = b.option(bool, "freetype_enable_brotli", "Build brotli") orelse false;
+    const enable_brotli = b.option(bool, "freetype_enable_brotli", "Build brotli") orelse true;
 
     const freetype_dep = b.dependency("freetype", .{
         .target = target,
