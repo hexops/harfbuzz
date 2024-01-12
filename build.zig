@@ -17,10 +17,10 @@ pub fn build(b: *std.Build) void {
 
     const lib = b.addStaticLibrary(.{
         .name = "harfbuzz",
-        .root_source_file = .{ .path = "src/harfbuzz.cc" },
         .target = target,
         .optimize = optimize,
     });
+    lib.addCSourceFile(.{ .file = .{ .path = "src/harfbuzz.cc" } });
     lib.linkLibCpp();
     lib.installHeadersDirectoryOptions(.{
         .source_dir = .{ .path = "src" },
