@@ -33,6 +33,8 @@ pub fn build(b: *std.Build) void {
         lib.linkLibrary(b.dependency("freetype", .{
             .target = target,
             .optimize = optimize,
+            .use_system_zlib = use_system_zlib,
+            .enable_brotli = enable_brotli,
         }).artifact("freetype"));
     }
     b.installArtifact(lib);
