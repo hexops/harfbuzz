@@ -7,14 +7,6 @@ pub fn build(b: *std.Build) void {
     const use_system_zlib = b.option(bool, "freetype_use_system_zlib", "Use system zlib") orelse false;
     const enable_brotli = b.option(bool, "freetype_enable_brotli", "Build brotli") orelse true;
 
-    const freetype_dep = b.dependency("freetype", .{
-        .target = target,
-        .optimize = optimize,
-        .use_system_zlib = use_system_zlib,
-        .enable_brotli = enable_brotli,
-    });
-    _ = freetype_dep;
-
     const lib = b.addStaticLibrary(.{
         .name = "harfbuzz",
         .target = target,
@@ -30,12 +22,15 @@ pub fn build(b: *std.Build) void {
     });
     if (enable_freetype) {
         lib.defineCMacro("HAVE_FREETYPE", "1");
-        lib.linkLibrary(b.dependency("freetype", .{
+
+        if (b.lazyDependency("freetype", .{
             .target = target,
             .optimize = optimize,
             .use_system_zlib = use_system_zlib,
             .enable_brotli = enable_brotli,
-        }).artifact("freetype"));
+        })) |dep| {
+            lib.linkLibrary(dep.artifact("freetype"));
+        }
     }
     b.installArtifact(lib);
 }
