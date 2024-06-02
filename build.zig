@@ -12,12 +12,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/harfbuzz.cc" } });
+    lib.addCSourceFile(.{ .file = b.path("src/harfbuzz.cc") });
     lib.linkLibCpp();
-    lib.installHeadersDirectoryOptions(.{
-        .source_dir = .{ .path = "src" },
-        .install_dir = .header,
-        .install_subdir = "harfbuzz",
+    lib.installHeadersDirectory(b.path("src"), "harfbuzz", .{
         .exclude_extensions = &.{".cc"},
     });
     if (enable_freetype) {
