@@ -15,12 +15,12 @@
     },
     .dependencies = .{
         .freetype = .{
-            .url = "https://pkg.machengine.org/freetype/15176bb045dcef2af742d66c806ddc974c38f258.tar.gz",
-            .hash = "12200af3f1a4033f44eb28fef742326b3cbfd27cfe199af07a82383ea175241a4eb0",
+            .url = "https://pkg.machengine.org/freetype/060ee56c3d10c01fb8a1da4fe8cb2102f2537f30.tar.gz",
+            .hash = "1220e1384f26c5b9a3749b49eced1cb8264e871b367dcda2624d37a05367e96c4319",
         },
         .brotli = .{
-            .url = "https://pkg.machengine.org/brotli/79018360cb56c6cc8568723935239190e5dabca8.tar.gz",
-            .hash = "12206e8b211c6b0ea59a32e2d1bba4ee023d9e3c32dbc50f43ab8d68e3704ba47361",
+            .url = "https://pkg.machengine.org/brotli/31ec33e2629f814c3830d3fdac066b5128adf5f1.tar.gz",
+            .hash = "1220c4923c2f4e9d6d2285bf897f325ed519bf85c6c4ceadfbd5b01e9f89e401dc7c",
             .lazy = true,
         },
     },
