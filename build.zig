@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
         .exclude_extensions = &.{".cc"},
     });
     if (enable_freetype) {
-        lib.defineCMacro("HAVE_FREETYPE", "1");
+        lib.root_module.addCMacro("HAVE_FREETYPE", "1");
 
         if (b.lazyDependency("freetype", .{
             .target = target,
